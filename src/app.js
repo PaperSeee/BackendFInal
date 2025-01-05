@@ -168,7 +168,7 @@ const corsOptions = {
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['Set-Cookie'],
+    exposedHeaders: ['Set-Cookie', 'Authorization'],
     preflightContinue: false,
     optionsSuccessStatus: 204
 };
@@ -276,15 +276,25 @@ const checkDatabaseConnection = async (req, res, next) => {
 
 // Middleware pour extraire et valider le token JWT
 const extractToken = (req) => {
-    if (req.cookies.token) {
+    // Check cookie first
+    if (req.cookies && req.cookies.token) {
+        console.log('Token found in cookies');
         return req.cookies.token;
     }
     
+    // Check Authorization header
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        return authHeader.substring(7);
+    if (authHeader) {
+        if (authHeader.startsWith('Bearer ')) {
+            console.log('Token found in Authorization header');
+            return authHeader.substring(7);
+        }
+        console.log('Invalid Authorization header format');
     }
     
+    console.log('No token found in request');
+    console.log('Cookies:', req.cookies);
+    console.log('Headers:', req.headers);
     return null;
 };
 
@@ -424,6 +434,7 @@ app.post('/api/login', async (req, res) => {
             exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 heures
         }, config.jwtSecret);
 
+        // Définir le cookie
         res.cookie('token', token, {
             httpOnly: true,
             secure: true,
@@ -433,11 +444,16 @@ app.post('/api/login', async (req, res) => {
             domain: '.vercel.app'
         });
 
+        // Envoyer le token dans l'en-tête Authorization aussi
+        res.setHeader('Authorization', `Bearer ${token}`);
+
         res.json({
             success: true,
             username: user.username,
-            token // Optionnel: envoi du token dans la réponse pour le stockage côté client
+            token
         });
+
+        console.log('Login successful, token set in cookie and response');
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Internal server error' });
