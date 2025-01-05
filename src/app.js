@@ -14,7 +14,14 @@ if (!process.env.MONGO_URI) {
     throw new Error('MONGO_URI is not defined in the environment variables');
 }
 
-const client = new MongoClient(process.env.MONGO_URI);
+const client = new MongoClient(process.env.MONGO_URI, {
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+    serverSelectionTimeoutMS: 5000,
+    retryWrites: true,
+    retryReads: true,
+    maxPoolSize: 10,
+});
 let db;
 
 const config = {
@@ -165,13 +172,35 @@ if (!fs.existsSync(dataDir)) {
 // Créer une fonction pour initialiser la connexion à la base de données
 async function initializeDatabase() {
     try {
-        console.log('Attempting to connect to MongoDB with URI:', process.env.MONGO_URI);
+        console.log('Attempting to connect to MongoDB...');
+        
+        // Close any existing connection
+        if (client.topology?.isConnected()) {
+            await client.close();
+        }
+        
         await client.connect();
         db = client.db('backendHL');
-        console.log('Connected to MongoDB');
+        
+        // Test the connection
+        await db.command({ ping: 1 });
+        console.log('Successfully connected to MongoDB');
+        
+        // Add connection error handlers
+        client.on('error', (error) => {
+            console.error('MongoDB connection error:', error);
+            db = null;
+        });
+
+        client.on('close', () => {
+            console.log('MongoDB connection closed');
+            db = null;
+        });
+
         return true;
     } catch (error) {
         console.error('Failed to connect to MongoDB:', error);
+        console.error('Connection URI:', process.env.MONGO_URI?.replace(/:[^:@]*@/, ':****@')); // Hide password in logs
         return false;
     }
 }
