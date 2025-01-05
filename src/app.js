@@ -24,8 +24,7 @@ const client = new MongoClient(process.env.MONGO_URI, {
     minPoolSize: 1,
     writeConcern: {
         w: 'majority'
-    },
-    directConnection: true
+    }
 });
 let db;
 
