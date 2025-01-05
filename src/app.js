@@ -348,6 +348,63 @@ const authenticateAdmin = async (req, res, next) => {
         });
     }
 };
+a
+// Constants for token configuration
+const TOKEN_CONFIG = {
+    accessTokenExpiry: '24h',
+    cookieMaxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+    cookieOptions: {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+        domain: '.vercel.app'
+    }
+};
+
+// Middleware to handle token validation and refresh
+const validateToken = (req, res, next) => {
+    const token = extractToken(req);
+    
+    if (!token) {
+        return res.status(401).json({
+            error: 'No token provided',
+            code: 'TOKEN_MISSING'
+        });
+    }
+
+    try {
+        const decoded = jwt.verify(token, config.jwtSecret);
+        req.user = decoded;
+
+        // Check if token needs refresh (less than 30 minutes remaining)
+        const timeRemaining = decoded.exp - Math.floor(Date.now() / 1000);
+        if (timeRemaining < 1800) { // 30 minutes in seconds
+            const newToken = jwt.sign(
+                { username: decoded.username, role: decoded.role },
+                config.jwtSecret,
+                { expiresIn: TOKEN_CONFIG.accessTokenExpiry }
+            );
+
+            res.cookie('token', newToken, TOKEN_CONFIG.cookieOptions);
+        }
+
+        next();
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            res.clearCookie('token', TOKEN_CONFIG.cookieOptions);
+            return res.status(401).json({
+                error: 'Token expired',
+                code: 'TOKEN_EXPIRED'
+            });
+        }
+        
+        return res.status(401).json({
+            error: 'Invalid token',
+            code: 'TOKEN_INVALID'
+        });
+    }
+};
 
 app.use(checkDatabaseConnection);
 
@@ -422,7 +479,7 @@ app.get('/api/tokens', async (req, res) => {
     }
 });
 
-app.put('/api/tokens/:tokenIndex', authenticateAdmin, async (req, res) => {
+app.put('/api/tokens/:tokenIndex', validateToken, authenticateAdmin, async (req, res) => {
     // Your existing code here
     try {
         const tokenIndex = parseInt(req.params.tokenIndex, 10);
@@ -497,26 +554,22 @@ app.post('/api/update', async (req, res) => {
     }
 });
 
-app.get('/api/check-auth', authenticateAdmin, (req, res) => {
+app.get('/api/check-auth', validateToken, (req, res) => {
     res.header('Access-Control-Allow-Origin', 'https://hyperliquid-paperseees-projects.vercel.app');
     res.header('Access-Control-Allow-Credentials', 'true');
     res.json({
         authenticated: true,
         user: {
             username: req.user.username,
-            role: req.user.role
+            role: req.user.role,
+            exp: req.user.exp
         }
     });
 });
 
-app.post('/api/logout', (req, res) => {
-    res.clearCookie('token', {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/',
-        domain: '.vercel.app'
-    });
+app.post('/api/logout', validateToken, (req, res) => {
+    res.clearCookie('token', TOKEN_CONFIG.cookieOptions);
+    console.log(`User ${req.user.username} logged out at ${new Date().toISOString()}`);
     res.json({ success: true });
 });
 
