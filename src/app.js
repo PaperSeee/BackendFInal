@@ -34,8 +34,22 @@ const config = {
     hypurrscanApiUrl: process.env.HYPURRSCAN_API_URL,
     corsOrigin: process.env.CORS_ORIGIN,
     pollingInterval: parseInt(process.env.POLLING_INTERVAL, 10) || 60000,
-    jwtSecret: process.env.JWT_SECRET || 'your_jwt_secret'
+    jwtSecret: process.env.JWT_SECRET || (() => {
+        console.error('WARNING: JWT_SECRET is not set. Using an insecure default secret.');
+        return 'your_jwt_secret';
+    })(),
 };
+
+// Add this check at app startup
+if (!process.env.JWT_SECRET) {
+    console.error('⚠️  WARNING: JWT_SECRET environment variable is not set!');
+    console.error('Please configure JWT_SECRET in your Vercel environment variables.');
+    
+    if (process.env.NODE_ENV === 'production') {
+        console.error('Refusing to start in production without JWT_SECRET');
+        process.exit(1);
+    }
+}
 
 const limit = pLimit(5);
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
