@@ -15,12 +15,17 @@ if (!process.env.MONGO_URI) {
 }
 
 const client = new MongoClient(process.env.MONGO_URI, {
-    connectTimeoutMS: 10000,
+    connectTimeoutMS: 30000,
     socketTimeoutMS: 45000,
-    serverSelectionTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 60000,
     retryWrites: true,
     retryReads: true,
-    maxPoolSize: 10,
+    maxPoolSize: 1,
+    minPoolSize: 1,
+    writeConcern: {
+        w: 'majority'
+    },
+    directConnection: true
 });
 let db;
 
@@ -170,37 +175,44 @@ if (!fs.existsSync(dataDir)) {
 }
 
 // Créer une fonction pour initialiser la connexion à la base de données
-async function initializeDatabase() {
+async function initializeDatabase(retryCount = 0) {
+    const maxRetries = 3;
+    const retryDelay = 2000;
+
     try {
-        console.log('Attempting to connect to MongoDB...');
+        console.log(`Attempting to connect to MongoDB (attempt ${retryCount + 1}/${maxRetries + 1})...`);
         
-        // Close any existing connection
-        if (client.topology?.isConnected()) {
-            await client.close();
+        // Force close any existing connection
+        try {
+            await client.close(true);
+        } catch (e) {
+            console.log('No existing connection to close');
         }
         
+        // Clear the db reference
+        db = null;
+        
+        // Connect with new options
         await client.connect();
+        
+        // Explicitly select the database
         db = client.db('backendHL');
         
-        // Test the connection
+        // Test the connection and authentication
         await db.command({ ping: 1 });
         console.log('Successfully connected to MongoDB');
         
-        // Add connection error handlers
-        client.on('error', (error) => {
-            console.error('MongoDB connection error:', error);
-            db = null;
-        });
-
-        client.on('close', () => {
-            console.log('MongoDB connection closed');
-            db = null;
-        });
-
         return true;
     } catch (error) {
-        console.error('Failed to connect to MongoDB:', error);
-        console.error('Connection URI:', process.env.MONGO_URI?.replace(/:[^:@]*@/, ':****@')); // Hide password in logs
+        console.error('MongoDB connection error:', error);
+        console.error('Connection URI (sanitized):', process.env.MONGO_URI?.replace(/:[^:@]*@/, ':****@'));
+        
+        if (retryCount < maxRetries) {
+            console.log(`Retrying in ${retryDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            return initializeDatabase(retryCount + 1);
+        }
+        
         return false;
     }
 }
