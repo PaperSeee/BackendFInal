@@ -164,11 +164,11 @@ const app = express();
 
 // Configuration CORS avec support complet des credentials
 const corsOptions = {
-    origin: 'https://hyperliquid-paperseees-projects.vercel.app',
+    origin: ['https://hyperliquid-paperseees-projects.vercel.app', 'https://backend-finalllll.vercel.app'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['Set-Cookie', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+    exposedHeaders: ['Set-Cookie'],
     preflightContinue: false,
     optionsSuccessStatus: 204
 };
@@ -177,6 +177,14 @@ app.use(cors(corsOptions));
 app.use(cookieParser());
 
 // Configuration des cookies
+const COOKIE_CONFIG = {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    path: '/',
+    domain: process.env.NODE_ENV === 'production' ? '.vercel.app' : undefined
+};
+
 app.use((req, res, next) => {
     res.cookie = res.cookie.bind(res);
     const oldCookie = res.cookie;
@@ -276,25 +284,20 @@ const checkDatabaseConnection = async (req, res, next) => {
 
 // Middleware pour extraire et valider le token JWT
 const extractToken = (req) => {
-    // Check cookie first
     if (req.cookies && req.cookies.token) {
-        console.log('Token found in cookies');
         return req.cookies.token;
     }
     
-    // Check Authorization header
     const authHeader = req.headers.authorization;
-    if (authHeader) {
-        if (authHeader.startsWith('Bearer ')) {
-            console.log('Token found in Authorization header');
-            return authHeader.substring(7);
-        }
-        console.log('Invalid Authorization header format');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        return authHeader.substring(7);
     }
-    
-    console.log('No token found in request');
-    console.log('Cookies:', req.cookies);
-    console.log('Headers:', req.headers);
+
+    // Add query parameter check as fallback
+    if (req.query && req.query.token) {
+        return req.query.token;
+    }
+
     return null;
 };
 
@@ -434,17 +437,7 @@ app.post('/api/login', async (req, res) => {
             exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 heures
         }, config.jwtSecret);
 
-        // Définir le cookie
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'none',
-            maxAge: 24 * 60 * 60 * 1000,
-            path: '/',
-            domain: '.vercel.app'
-        });
-
-        // Envoyer le token dans l'en-tête Authorization aussi
+        res.cookie('token', token, COOKIE_CONFIG);
         res.setHeader('Authorization', `Bearer ${token}`);
 
         res.json({
