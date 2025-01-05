@@ -163,9 +163,10 @@ if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir);
 }
 
-// Créer une fonction pour initialiser la connexion à la base de donnéesa
+// Créer une fonction pour initialiser la connexion à la base de données
 async function initializeDatabase() {
     try {
+        console.log('Attempting to connect to MongoDB with URI:', process.env.MONGO_URI);
         await client.connect();
         db = client.db('backendHL');
         console.log('Connected to MongoDB');
@@ -176,7 +177,7 @@ async function initializeDatabase() {
     }
 }
 
-// Middleware pour vérifier la connexion à la base de donnéessss
+// Middleware pour vérifier la connexion à la base de données
 const checkDatabaseConnection = async (req, res, next) => {
     if (!db) {
         try {
@@ -185,6 +186,7 @@ const checkDatabaseConnection = async (req, res, next) => {
                 return res.status(500).json({ error: 'Database connection failed' });
             }
         } catch (error) {
+            console.error('Error during database connection check:', error);
             return res.status(500).json({ error: 'Database connection failed' });
         }
     }
