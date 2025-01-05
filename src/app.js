@@ -8,7 +8,6 @@ const pLimit = require('p-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
-require('dotenv').config();
 const { MongoClient } = require('mongodb');
 
 if (!process.env.MONGO_URI) {
