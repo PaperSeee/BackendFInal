@@ -162,7 +162,16 @@ async function updateTokenData() {
 
 const app = express();
 app.use(cors({ 
-    origin: config.corsOrigin,
+    origin: (origin, callback) => {
+        const allowedOrigin = config.corsOrigin?.replace(/\/$/, ''); // Remove trailing slash
+        const incomingOrigin = origin?.replace(/\/$/, ''); // Remove trailing slash
+        
+        if (!origin || incomingOrigin === allowedOrigin) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true 
 }));
 app.use(express.json());
