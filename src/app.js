@@ -348,7 +348,7 @@ const authenticateAdmin = async (req, res, next) => {
         });
     }
 };
-a
+
 // Constants for token configuration
 const TOKEN_CONFIG = {
     accessTokenExpiry: '24h',
