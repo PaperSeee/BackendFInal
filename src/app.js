@@ -161,19 +161,40 @@ async function updateTokenData() {
 }
 
 const app = express();
-app.use(cors({ 
-    origin: (origin, callback) => {
-        const allowedOrigin = config.corsOrigin?.replace(/\/$/, ''); // Remove trailing slash
-        const incomingOrigin = origin?.replace(/\/$/, ''); // Remove trailing slash
+
+// Add CORS configuration logging
+console.log('CORS Origin:', config.corsOrigin);
+
+app.use(cors({
+    origin: function(origin, callback) {
+        console.log('Incoming origin:', origin);
+        console.log('Configured origin:', config.corsOrigin);
         
-        if (!origin || incomingOrigin === allowedOrigin) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) {
+            console.log('No origin, allowing request');
+            return callback(null, true);
+        }
+
+        const normalizedConfigOrigin = config.corsOrigin?.replace(/\/$/, '');
+        const normalizedRequestOrigin = origin.replace(/\/$/, '');
+        
+        console.log('Normalized config origin:', normalizedConfigOrigin);
+        console.log('Normalized request origin:', normalizedRequestOrigin);
+
+        if (normalizedRequestOrigin === normalizedConfigOrigin) {
+            console.log('Origin matched, allowing request');
             callback(null, true);
         } else {
+            console.log('Origin did not match, denying request');
             callback(new Error('Not allowed by CORS'));
         }
     },
-    credentials: true 
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
 app.use(express.json());
 app.use(cookieParser());
 
