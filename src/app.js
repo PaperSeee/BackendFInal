@@ -176,7 +176,7 @@ async function initializeDatabase() {
     }
 }
 
-// Middleware pour vérifier la connexion à la base de données
+// Middleware pour vérifier la connexion à la base de donnéessss
 const checkDatabaseConnection = async (req, res, next) => {
     if (!db) {
         try {
