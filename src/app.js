@@ -162,16 +162,36 @@ async function updateTokenData() {
 
 const app = express();
 
-// Configuration CORS
+// Configuration CORS avec support complet des credentials
 const corsOptions = {
     origin: 'https://hyperliquid-paperseees-projects.vercel.app',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['set-cookie']
+    exposedHeaders: ['Set-Cookie'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
+app.use(cookieParser());
+
+// Configuration des cookies
+app.use((req, res, next) => {
+    res.cookie = res.cookie.bind(res);
+    const oldCookie = res.cookie;
+    res.cookie = function (name, value, options = {}) {
+        return oldCookie.call(this, name, value, {
+            ...options,
+            sameSite: 'none',
+            secure: true,
+            httpOnly: true,
+            path: '/',
+            domain: '.vercel.app'
+        });
+    };
+    next();
+});
 
 // Middleware pour les headers CORS additionnels
 app.use((req, res, next) => {
@@ -257,18 +277,26 @@ const checkDatabaseConnection = async (req, res, next) => {
 // Middleware pour vérifier l'authentification de l'utilisateur admin
 const authenticateAdmin = (req, res, next) => {
     const token = req.cookies.token;
+    
     if (!token) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return res.status(401).json({ error: 'No token provided' });
     }
 
     try {
         const decoded = jwt.verify(token, config.jwtSecret);
+        req.user = decoded;
+        
         if (decoded.username !== 'admin') {
-            return res.status(401).json({ error: 'Unauthorized' });
+            return res.status(403).json({ error: 'Not authorized' });
         }
+        
         next();
     } catch (error) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        if (error.name === 'TokenExpiredError') {
+            res.clearCookie('token');
+            return res.status(401).json({ error: 'Token expired' });
+        }
+        return res.status(401).json({ error: 'Invalid token' });
     }
 };
 
@@ -279,19 +307,28 @@ app.post('/api/login', async (req, res) => {
 
     try {
         const user = await db.collection('users').findOne({ username });
-        if (!user) {
+        if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ error: 'Invalid credentials' });
-        }
+        const token = jwt.sign(
+            { username: user.username }, 
+            config.jwtSecret, 
+            { expiresIn: '24h' }
+        );
 
-        const token = jwt.sign({ username: user.username }, config.jwtSecret, { expiresIn: '1h' });
-        res.cookie('token', token, { httpOnly: true });
-        res.json({ message: 'Login successful' });
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'none',
+            path: '/',
+            domain: '.vercel.app',
+            maxAge: 24 * 60 * 60 * 1000 // 24 heures
+        });
+
+        res.json({ success: true, username: user.username });
     } catch (error) {
+        console.error('Login error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -413,8 +450,14 @@ app.get('/api/check-auth', authenticateAdmin, (req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
-    res.clearCookie('token');
-    res.json({ message: 'Logged out successfully' });
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+        domain: '.vercel.app'
+    });
+    res.json({ success: true });
 });
 
 // Exporter l'application avant d'établir la connexion de ramia
