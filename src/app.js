@@ -274,29 +274,78 @@ const checkDatabaseConnection = async (req, res, next) => {
     next();
 };
 
-// Middleware pour vérifier l'authentification de l'utilisateur admin
-const authenticateAdmin = (req, res, next) => {
-    const token = req.cookies.token;
-    
-    if (!token) {
-        return res.status(401).json({ error: 'No token provided' });
+// Middleware pour extraire et valider le token JWT
+const extractToken = (req) => {
+    if (req.cookies.token) {
+        return req.cookies.token;
     }
+    
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        return authHeader.substring(7);
+    }
+    
+    return null;
+};
 
+// Middleware d'authentification amélioré
+const authenticateAdmin = async (req, res, next) => {
     try {
-        const decoded = jwt.verify(token, config.jwtSecret);
-        req.user = decoded;
+        const token = extractToken(req);
         
-        if (decoded.username !== 'admin') {
-            return res.status(403).json({ error: 'Not authorized' });
+        if (!token) {
+            return res.status(401).json({
+                error: 'Authentication required',
+                message: 'No token provided'
+            });
         }
-        
-        next();
+
+        try {
+            const decoded = jwt.verify(token, config.jwtSecret);
+            
+            // Vérification de l'expiration
+            if (decoded.exp && Date.now() >= decoded.exp * 1000) {
+                res.clearCookie('token');
+                return res.status(401).json({
+                    error: 'Token expired',
+                    message: 'Please login again'
+                });
+            }
+
+            // Vérification du rôle admin
+            if (decoded.username !== 'admin') {
+                return res.status(403).json({
+                    error: 'Insufficient permissions',
+                    message: 'Admin access required'
+                });
+            }
+
+            // Stockage des informations de l'utilisateur pour utilisation ultérieure
+            req.user = decoded;
+            next();
+            
+        } catch (error) {
+            if (error.name === 'JsonWebTokenError') {
+                return res.status(401).json({
+                    error: 'Invalid token',
+                    message: 'Token validation failed'
+                });
+            }
+            if (error.name === 'TokenExpiredError') {
+                res.clearCookie('token');
+                return res.status(401).json({
+                    error: 'Token expired',
+                    message: 'Please login again'
+                });
+            }
+            throw error;
+        }
     } catch (error) {
-        if (error.name === 'TokenExpiredError') {
-            res.clearCookie('token');
-            return res.status(401).json({ error: 'Token expired' });
-        }
-        return res.status(401).json({ error: 'Invalid token' });
+        console.error('Authentication error:', error);
+        return res.status(500).json({
+            error: 'Authentication failed',
+            message: 'Internal server error during authentication'
+        });
     }
 };
 
@@ -311,22 +360,27 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        const token = jwt.sign(
-            { username: user.username }, 
-            config.jwtSecret, 
-            { expiresIn: '24h' }
-        );
+        const token = jwt.sign({
+            username: user.username,
+            role: 'admin',
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 heures
+        }, config.jwtSecret);
 
         res.cookie('token', token, {
             httpOnly: true,
             secure: true,
             sameSite: 'none',
+            maxAge: 24 * 60 * 60 * 1000,
             path: '/',
-            domain: '.vercel.app',
-            maxAge: 24 * 60 * 60 * 1000 // 24 heures
+            domain: '.vercel.app'
         });
 
-        res.json({ success: true, username: user.username });
+        res.json({
+            success: true,
+            username: user.username,
+            token // Optionnel: envoi du token dans la réponse pour le stockage côté client
+        });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -446,7 +500,13 @@ app.post('/api/update', async (req, res) => {
 app.get('/api/check-auth', authenticateAdmin, (req, res) => {
     res.header('Access-Control-Allow-Origin', 'https://hyperliquid-paperseees-projects.vercel.app');
     res.header('Access-Control-Allow-Credentials', 'true');
-    res.json({ authenticated: true });
+    res.json({
+        authenticated: true,
+        user: {
+            username: req.user.username,
+            role: req.user.role
+        }
+    });
 });
 
 app.post('/api/logout', (req, res) => {
