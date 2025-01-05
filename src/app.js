@@ -5,7 +5,7 @@ const cron = require('node-cron');
 const fs = require('fs');
 const path = require('path');
 const pLimit = require('p-limit');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
