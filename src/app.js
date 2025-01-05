@@ -162,38 +162,30 @@ async function updateTokenData() {
 
 const app = express();
 
-// Add CORS configuration logging
-console.log('CORS Origin:', config.corsOrigin);
-
-app.use(cors({
-    origin: function(origin, callback) {
-        console.log('Incoming origin:', origin);
-        console.log('Configured origin:', config.corsOrigin);
-        
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) {
-            console.log('No origin, allowing request');
-            return callback(null, true);
-        }
-
-        const normalizedConfigOrigin = config.corsOrigin?.replace(/\/$/, '');
-        const normalizedRequestOrigin = origin.replace(/\/$/, '');
-        
-        console.log('Normalized config origin:', normalizedConfigOrigin);
-        console.log('Normalized request origin:', normalizedRequestOrigin);
-
-        if (normalizedRequestOrigin === normalizedConfigOrigin) {
-            console.log('Origin matched, allowing request');
-            callback(null, true);
-        } else {
-            console.log('Origin did not match, denying request');
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+// Configuration CORS
+const corsOptions = {
+    origin: 'https://hyperliquid-paperseees-projects.vercel.app',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['set-cookie']
+};
+
+app.use(cors(corsOptions));
+
+// Middleware pour les headers CORS additionnels
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Origin', 'https://hyperliquid-paperseees-projects.vercel.app');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
 
 app.use(express.json());
 app.use(cookieParser());
@@ -415,6 +407,8 @@ app.post('/api/update', async (req, res) => {
 });
 
 app.get('/api/check-auth', authenticateAdmin, (req, res) => {
+    res.header('Access-Control-Allow-Origin', 'https://hyperliquid-paperseees-projects.vercel.app');
+    res.header('Access-Control-Allow-Credentials', 'true');
     res.json({ authenticated: true });
 });
 
