@@ -2,21 +2,20 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/cron.js",
+      "src": "src/app.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/api/cron",
-      "dest": "api/cron.js"
+      "src": "/(.*)",
+      "dest": "src/app.js"
     }
   ],
   "crons": [
     {
-      "path": "/api/cron",
-      "schedule":"0 0 * * *"
-
+      "path": "/api/update",
+      "schedule": "* * * * *"
     }
   ]
 }

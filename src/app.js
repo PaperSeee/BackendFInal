@@ -370,3 +370,6 @@ if (require.main === module) {
         }
     });
 }
+
+// Ensure the app is exported for Vercel
+module.exports = app;
