@@ -566,27 +566,8 @@ app.put('/api/tokens/:tokenIndex', validateToken, authenticateAdmin, async (req,
     // ...existing code...
 });
 
-app.put('/api/tokens/:tokenIndex/highlight', validateToken, authenticateAdmin, async (req, res) => {
-    try {
-        const tokenIndex = parseInt(req.params.tokenIndex, 10);
-        const { highlight } = req.body;
 
-        const result = await db.collection('allTokens').findOneAndUpdate(
-            { tokenIndex: tokenIndex },
-            { $set: { highlighted: highlight } },
-            { returnDocument: 'after' }
-        );
-
-        if (!result.value) {
-            return res.status(404).json({ error: 'Token not found' });
-        }
-
-        res.json({ success: true, token: result.value });
-    } catch (error) {
-        console.error('Error updating highlight:', error);
-        res.status(500).json({ error: 'Error updating highlight' });
-    }
-});
+  
 
 app.post('/api/update', async (req, res) => {
     try {
