@@ -503,7 +503,7 @@ app.get('/api/tokens', async (req, res) => {
 });
 
 app.put('/api/tokens/:tokenIndex', validateToken, authenticateAdmin, async (req, res) => {
-    // Your existing code here
+   
     try {
         const tokenIndex = parseInt(req.params.tokenIndex, 10);
 
@@ -563,7 +563,7 @@ app.put('/api/tokens/:tokenIndex', validateToken, authenticateAdmin, async (req,
             details: error.message
         });
     }
-    // ...existing code...
+    
 });
 
 app.put('/api/tokens/:tokenIndex/highlight', validateToken, authenticateAdmin, async (req, res) => {
@@ -591,7 +591,7 @@ app.put('/api/tokens/:tokenIndex/highlight', validateToken, authenticateAdmin, a
 app.post('/api/update', async (req, res) => {
     try {
         console.log('Scheduled update triggered');
-        await updateTokenData(); // Appellee votre logique de mise à jourRRRaR
+        await updateTokenData(); // Appelle votre logique de mise à jourRRRaR
         res.status(200).send('Update completed');
     } catch (error) {
         console.error('Error during scheduled update:', error);
