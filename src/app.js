@@ -10,8 +10,10 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const { MongoClient } = require('mongodb');
 
-if (!process.env.MONGO_URI) {
-    throw new Error('MONGO_URI is not defined in the environment variables');
+if (!process.env.MONGO_URI || 
+    (!process.env.MONGO_URI.startsWith('mongodb://') && 
+     !process.env.MONGO_URI.startsWith('mongodb+srv://'))) {
+    throw new Error('Invalid MONGO_URI format. Must start with mongodb:// or mongodb+srv://');
 }
 
 const client = new MongoClient(process.env.MONGO_URI, {
@@ -244,6 +246,7 @@ async function initializeDatabase(retryCount = 0) {
 
     try {
         console.log(`Attempting to connect to MongoDB (attempt ${retryCount + 1}/${maxRetries + 1})...`);
+        console.log('Connection string format:', process.env.MONGO_URI.split('@')[0].replace(/:[^:]+@/, ':****@'));
         
         // Force close any existing connection
         try {
@@ -261,14 +264,17 @@ async function initializeDatabase(retryCount = 0) {
         // Explicitly select the database
         db = client.db('backendHL');
         
-        // Test the connection and authentication
+        // Test the connection
         await db.command({ ping: 1 });
         console.log('Successfully connected to MongoDB');
         
         return true;
     } catch (error) {
-        console.error('MongoDB connection error:', error);
-        console.error('Connection URI (sanitized):', process.env.MONGO_URI?.replace(/:[^:@]*@/, ':****@'));
+        console.error('MongoDB connection error:', error.message);
+        if (error.name === 'MongoParseError') {
+            console.error('Invalid MongoDB connection string format');
+            return false;
+        }
         
         if (retryCount < maxRetries) {
             console.log(`Retrying in ${retryDelay}ms...`);
