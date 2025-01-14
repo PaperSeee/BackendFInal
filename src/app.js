@@ -10,13 +10,11 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const { MongoClient } = require('mongodb');
 
-const uri = process.env.MONGO_URI || "mongodb+srv://shengen0703:Ilias2OO4@hypurrspot.pezxc.mongodb.net/HypurrSpot?retryWrites=true&w=majority";
-
-if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
-    throw new Error('Invalid MongoDB URI format');
+if (!process.env.MONGO_URI) {
+    throw new Error('MONGO_URI is not defined in the environment variables');
 }
 
-const client = new MongoClient(uri, {
+const client = new MongoClient(process.env.MONGO_URI, {
     connectTimeoutMS: 30000,
     socketTimeoutMS: 45000,
     serverSelectionTimeoutMS: 60000,
@@ -246,7 +244,6 @@ async function initializeDatabase(retryCount = 0) {
 
     try {
         console.log(`Attempting to connect to MongoDB (attempt ${retryCount + 1}/${maxRetries + 1})...`);
-        console.log('Connection string format:', process.env.MONGO_URI.split('@')[0].replace(/:[^:]+@/, ':****@'));
         
         // Force close any existing connection
         try {
@@ -262,19 +259,16 @@ async function initializeDatabase(retryCount = 0) {
         await client.connect();
         
         // Explicitly select the database
-        db = client.db('HypurrSpot');
+        db = client.db('backendHL');
         
-        // Test the connection
+        // Test the connection and authentication
         await db.command({ ping: 1 });
         console.log('Successfully connected to MongoDB');
         
         return true;
     } catch (error) {
-        console.error('MongoDB connection error:', error.message);
-        if (error.name === 'MongoParseError') {
-            console.error('Invalid MongoDB connection string format');
-            return false;
-        }
+        console.error('MongoDB connection error:', error);
+        console.error('Connection URI (sanitized):', process.env.MONGO_URI?.replace(/:[^:@]*@/, ':****@'));
         
         if (retryCount < maxRetries) {
             console.log(`Retrying in ${retryDelay}ms...`);
@@ -597,7 +591,7 @@ app.put('/api/tokens/:tokenIndex/highlight', validateToken, authenticateAdmin, a
 app.post('/api/update', async (req, res) => {
     try {
         console.log('Scheduled update triggered');
-        await updateTokenData(); // Appelle votre logique de mise à jourRRRaRrrr
+        await updateTokenData(); // Appelle votre logique de mise à jourRRRaR
         res.status(200).send('Update completed');
     } catch (error) {
         console.error('Error during scheduled update:', error);
