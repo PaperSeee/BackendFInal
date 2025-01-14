@@ -10,13 +10,13 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const { MongoClient } = require('mongodb');
 
-if (!process.env.MONGO_URI || 
-    (!process.env.MONGO_URI.startsWith('mongodb://') && 
-     !process.env.MONGO_URI.startsWith('mongodb+srv://'))) {
-    throw new Error('Invalid MONGO_URI format. Must start with mongodb:// or mongodb+srv://');
+const uri = process.env.MONGO_URI || "mongodb+srv://shengen0703:Ilias2OO4@hypurrspot.pezxc.mongodb.net/HypurrSpot?retryWrites=true&w=majority";
+
+if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
+    throw new Error('Invalid MongoDB URI format');
 }
 
-const client = new MongoClient(process.env.MONGO_URI, {
+const client = new MongoClient(uri, {
     connectTimeoutMS: 30000,
     socketTimeoutMS: 45000,
     serverSelectionTimeoutMS: 60000,
@@ -262,7 +262,7 @@ async function initializeDatabase(retryCount = 0) {
         await client.connect();
         
         // Explicitly select the database
-        db = client.db('backendHL');
+        db = client.db('HypurrSpot');
         
         // Test the connection
         await db.command({ ping: 1 });
