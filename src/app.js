@@ -178,7 +178,7 @@ const app = express();
 
 // Configuration CORS avec support complet des credentials
 const corsOptions = {
-    origin: ['https://hyperliquid-paperseees-projects.vercel.app', 'https://backend-finalllll.vercel.app'],
+    origin: ['https://www.hypurrspot.xyz', 'https://backend-finalllll.vercel.app'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
@@ -218,7 +218,7 @@ app.use((req, res, next) => {
 // Middleware pour les headers CORS additionnels
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Origin', 'https://hyperliquid-paperseees-projects.vercel.app');
+    res.header('Access-Control-Allow-Origin', 'https://www.hypurrspot.xyz');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
     
@@ -600,7 +600,7 @@ app.post('/api/update', async (req, res) => {
 });
 
 app.get('/api/check-auth', validateToken, (req, res) => {
-    res.header('Access-Control-Allow-Origin', 'https://hyperliquid-paperseees-projects.vercel.app');
+    res.header('Access-Control-Allow-Origin', 'https://www.hypurrspot.xyz');
     res.header('Access-Control-Allow-Credentials', 'true');
     res.json({
         authenticated: true,
