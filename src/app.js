@@ -142,7 +142,10 @@ async function updateTokenData() {
                     telegram: existingToken?.telegram || "",
                     discord: existingToken?.discord || "",
                     website: existingToken?.website || "",
-                    comment: existingToken?.comment || ""
+                    projectDescription: existingToken?.projectDescription || "",
+                    personalComment: existingToken?.personalComment || "",
+                    devTeamContact: existingToken?.devTeamContact || "",
+                    lastUpdated: new Date().toISOString()
                 };
 
                 if (!existingToken) {
@@ -503,67 +506,47 @@ app.get('/api/tokens', async (req, res) => {
 });
 
 app.put('/api/tokens/:tokenIndex', validateToken, authenticateAdmin, async (req, res) => {
-   
     try {
         const tokenIndex = parseInt(req.params.tokenIndex, 10);
-
         if (isNaN(tokenIndex)) {
             return res.status(400).json({ error: 'Invalid token index' });
         }
 
-        const updates = req.body;
+        const updates = {
+            ...req.body,
+            lastUpdated: new Date().toISOString()
+        };
 
-        console.log('Attempting to update token with tokenIndex:', tokenIndex);
-        console.log('Update payload:', updates);
-
-        if (!db) {
-            console.error('Database connection not established');
-            return res.status(500).json({ error: 'Database connection not established' });
+        // Validate the updates
+        if (updates.projectDescription && updates.projectDescription.length > 1000) {
+            return res.status(400).json({ error: 'Project description too long' });
+        }
+        if (updates.personalComment && updates.personalComment.length > 500) {
+            return res.status(400).json({ error: 'Personal comment too long' });
         }
 
-        // Vérifier si le token existe
-        const existingToken = await db.collection('allTokens').findOne({ tokenIndex: tokenIndex });
-        console.log('Existing token:', existingToken);
-        
-        if (!existingToken) {
-            console.log('Token not found with tokenIndex:', tokenIndex);
+        const result = await db.collection('allTokens').findOneAndUpdate(
+            { tokenIndex: tokenIndex },
+            { $set: updates },
+            { returnDocument: 'after' }
+        );
+
+        if (!result.value) {
             return res.status(404).json({ error: 'Token not found' });
         }
 
-        // Mise à jour du document
-        console.log('Updating token with data:', { ...updates, lastUpdated: new Date().toISOString() });
-        const result = await db.collection('allTokens').findOneAndUpdate(
-            { tokenIndex: tokenIndex },
-            { $set: { 
-                ...updates,
-                lastUpdated: new Date().toISOString()
-            }},
-            { 
-                returnDocument: 'after'
-            }
-        );
-
-        console.log('Update result:', result);
-
-        if (!result.value) {
-            console.error('Update failed - no document returned');
-            return res.status(500).json({ error: 'Error updating token' });
-        }
-
-        console.log('Token updated successfully:', result.value);
-        res.json({ 
-            message: 'Token updated successfully', 
+        res.json({
+            message: 'Token updated successfully',
             token: result.value
         });
 
     } catch (error) {
         console.error('Error updating token:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Error updating token data',
             details: error.message
         });
     }
-    
 });
 
 app.put('/api/tokens/:tokenIndex/highlight', validateToken, authenticateAdmin, async (req, res) => {
