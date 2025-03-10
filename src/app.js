@@ -11,7 +11,7 @@ const cookieParser = require('cookie-parser');
 const { MongoClient } = require('mongodb');
 
 if (!process.env.MONGO_URI) {
-    process.env.MONGO_URI = 'mongodb+srv://shengen0703:Ilias2004@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot';
+    process.env.MONGO_URI = 'mongodb+srv://Paper:Coucou@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot';
 }
 
 const client = new MongoClient(process.env.MONGO_URI, {
