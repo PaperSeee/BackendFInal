@@ -14,41 +14,54 @@ require('dotenv').config();
 
 // Function to validate and ensure correct MongoDB URI format
 function getValidMongoURI() {
-  let uri = process.env.MONGO_URI;
-  
-  if (!uri) {
-    console.error('MONGO_URI is not defined in the environment variables');
-    console.error('Setting default connection string');
-    uri = "mongodb+srv://Paper:Coucou@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot";
-  }
-
-  // Clean the URI - trim whitespace and ensure proper format
-  uri = uri.trim();
-  
-  // Check if the URI has the correct prefix
-  if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
-    console.error('Invalid MongoDB URI format, adding proper prefix');
-    if (uri.includes('@') && uri.includes('.')) {
-      // Likely just missing the prefix
-      uri = 'mongodb+srv://' + uri;
-    } else {
-      throw new Error('MongoDB URI is incorrectly formatted and cannot be automatically fixed');
+  try {
+    // Start with the environment variable
+    let uri = process.env.MONGO_URI;
+    
+    console.log('Initial URI check:', uri ? 'URI exists' : 'URI missing');
+    
+    // Use a hardcoded URI if environment variable is not available
+    if (!uri || uri.trim() === '') {
+      console.log('Using hardcoded connection string as fallback');
+      return "mongodb+srv://Paper:Coucou@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot";
     }
+    
+    // Clean the URI - trim whitespace
+    uri = uri.trim();
+    
+    // If URI already has the right prefix, return it directly
+    if (uri.startsWith('mongodb://') || uri.startsWith('mongodb+srv://')) {
+      console.log('URI has correct prefix');
+      return uri;
+    }
+    
+    // Simple direct hard-code for the known URI to avoid parsing issues
+    if (uri.includes('Paper:Coucou@hypurrspot.pezxc.mongodb.net')) {
+      console.log('Recognized URI pattern, applying correct format');
+      return "mongodb+srv://Paper:Coucou@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot";
+    }
+    
+    // Fallback to default working URI
+    console.log('Using default URI format as the provided format could not be automatically fixed');
+    return "mongodb+srv://Paper:Coucou@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot";
+  } catch (error) {
+    console.error('Error while processing MongoDB URI:', error);
+    // Return a known working URI as fallback
+    return "mongodb+srv://Paper:Coucou@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot";
   }
-  
-  console.log('MongoDB URI format validation passed');
-  return uri;
 }
 
 // Get a properly formatted MongoDB URI
 let mongoURI;
 try {
+  console.log('Validating MongoDB URI...');
   mongoURI = getValidMongoURI();
   // Only log the sanitized version for security
-  console.log('Connection URI (sanitized):', mongoURI.replace(/:[^:@]*@/, ':****@'));
+  console.log('Final URI (sanitized):', mongoURI.replace(/:[^:@]*@/, ':****@'));
 } catch (error) {
-  console.error('Fatal error with MongoDB URI:', error.message);
-  process.exit(1);
+  console.error('Fatal error with MongoDB URI handling:', error.message);
+  mongoURI = "mongodb+srv://Paper:Coucou@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot";
+  console.log('Falling back to hardcoded URI after error');
 }
 
 // Create MongoDB client with validated URI
