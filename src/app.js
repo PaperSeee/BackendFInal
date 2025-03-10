@@ -12,21 +12,49 @@ const { MongoClient } = require('mongodb');
 
 require('dotenv').config();
 
-if (!process.env.MONGO_URI) {
+// Function to validate and ensure correct MongoDB URI format
+function getValidMongoURI() {
+  let uri = process.env.MONGO_URI;
+  
+  if (!uri) {
     console.error('MONGO_URI is not defined in the environment variables');
     console.error('Setting default connection string');
-    
-    // Hardcode the connection string properly
-    process.env.MONGO_URI = "mongodb+srv://Paper:Coucou@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot";
+    uri = "mongodb+srv://Paper:Coucou@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot";
+  }
+
+  // Clean the URI - trim whitespace and ensure proper format
+  uri = uri.trim();
+  
+  // Check if the URI has the correct prefix
+  if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
+    console.error('Invalid MongoDB URI format, adding proper prefix');
+    if (uri.includes('@') && uri.includes('.')) {
+      // Likely just missing the prefix
+      uri = 'mongodb+srv://' + uri;
+    } else {
+      throw new Error('MongoDB URI is incorrectly formatted and cannot be automatically fixed');
+    }
+  }
+  
+  console.log('MongoDB URI format validation passed');
+  return uri;
 }
 
-// Log URI for debugging (sanitized)
-console.log('Connection URI (sanitized):', process.env.MONGO_URI?.replace(/:[^:@]*@/, ':****@'));
+// Get a properly formatted MongoDB URI
+let mongoURI;
+try {
+  mongoURI = getValidMongoURI();
+  // Only log the sanitized version for security
+  console.log('Connection URI (sanitized):', mongoURI.replace(/:[^:@]*@/, ':****@'));
+} catch (error) {
+  console.error('Fatal error with MongoDB URI:', error.message);
+  process.exit(1);
+}
 
-// Clean the URI to remove any potential whitespace or invisible characters
-const cleanedUri = process.env.MONGO_URI.trim();
-
-const client = new MongoClient(cleanedUri, {
+// Create MongoDB client with validated URI
+let client;
+try {
+  client = new MongoClient(mongoURI, {
     connectTimeoutMS: 30000,
     socketTimeoutMS: 45000,
     serverSelectionTimeoutMS: 60000,
@@ -34,10 +62,14 @@ const client = new MongoClient(cleanedUri, {
     retryReads: true,
     maxPoolSize: 1,
     minPoolSize: 1,
-    writeConcern: {
-        w: 'majority'
-    }
-});
+    writeConcern: { w: 'majority' }
+  });
+  console.log('MongoDB client created successfully');
+} catch (error) {
+  console.error('Error creating MongoDB client:', error);
+  process.exit(1);
+}
+
 let db;
 
 const config = {
