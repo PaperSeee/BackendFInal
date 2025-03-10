@@ -14,10 +14,19 @@ require('dotenv').config();
 
 if (!process.env.MONGO_URI) {
     console.error('MONGO_URI is not defined in the environment variables');
-    process.exit(1);
+    console.error('Setting default connection string');
+    
+    // Hardcode the connection string properly
+    process.env.MONGO_URI = "mongodb+srv://Paper:Coucou@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot";
 }
 
-const client = new MongoClient(process.env.MONGO_URI, {
+// Log URI for debugging (sanitized)
+console.log('Connection URI (sanitized):', process.env.MONGO_URI?.replace(/:[^:@]*@/, ':****@'));
+
+// Clean the URI to remove any potential whitespace or invisible characters
+const cleanedUri = process.env.MONGO_URI.trim();
+
+const client = new MongoClient(cleanedUri, {
     connectTimeoutMS: 30000,
     socketTimeoutMS: 45000,
     serverSelectionTimeoutMS: 60000,
