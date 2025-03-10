@@ -10,8 +10,11 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const { MongoClient } = require('mongodb');
 
+require('dotenv').config();
+
 if (!process.env.MONGO_URI) {
-    process.env.MONGO_URI = 'mongodb+srv://Paper:Coucou@hypurrspot.pezxc.mongodb.net/?retryWrites=true&w=majority&appName=HypurrSpot';
+    console.error('MONGO_URI is not defined in the environment variables');
+    process.exit(1);
 }
 
 const client = new MongoClient(process.env.MONGO_URI, {
