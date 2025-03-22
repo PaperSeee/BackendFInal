@@ -1,6 +1,6 @@
 // src/cron/updateTokens.js
-const { connectToDatabase } = require('../src/config/database');
-const { updateTokenData } = require('../src/controllers/tokenController');
+const { connectToDatabase } = require('../config/database');
+const { updateTokenData } = require('../controllers/tokenController');
 
 (async () => {
   try {
