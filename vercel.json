@@ -1,21 +1,8 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "src/app.js",
-      "use": "@vercel/node"
+    "functions": {
+      "api/updateTokens.js": {
+        "schedule": "*/5 * * * *"
+      }
     }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "src/app.js"
-    }
-  ],
-  "crons": [
-    {
-      "path": "/api/update",
-      "schedule": "0 0 * * *"
-    }
-  ]
-}
+  }
+  
