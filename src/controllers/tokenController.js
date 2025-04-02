@@ -54,28 +54,34 @@ const getTokenDetails = (tokenId) => makeRateLimitedRequest(async () => {
 
 async function updateTokenData(db) {
   try {
-    // Récupère les tokens existants dans la base
     const currentTokens = await db.collection('allTokens').find({}).toArray();
     const startPxData = await db.collection('startPx').find({}).toArray();
     const spotTokens = await getSpotMeta();
     let hasChanges = false;
-    
+
     for (const token of spotTokens) {
-      // Vérifier par nom pour éviter les doublons
-      const existingToken = currentTokens.find(t => t.name === token.name);
+      const existingToken = currentTokens.find(t => t.tokenIndex === token.index);
+
       try {
         const details = await getTokenDetails(token.tokenId);
         const startPxEntry = startPxData.find(t => t.index === token.index);
         const startPx = startPxEntry?.startPx || null;
-        
+
+        // Récupération des champs airdrop1 et airdrop2 depuis l'API
+        const airdrop1 = details.airdrop1 !== undefined ? details.airdrop1 : existingToken?.airdrop1 || null;
+        const airdrop2 = details.airdrop2 !== undefined ? details.airdrop2 : existingToken?.airdrop2 || null;
+
+        console.log(`Processing token: ${token.name}`);
+        console.log(`airdrop1: ${airdrop1}, airdrop2: ${airdrop2}`);
+
         const tokenData = {
           name: token.name,
           tokenId: token.tokenId,
           index: token.index,
           tokenIndex: token.index,
-          startPx,
+          startPx: startPx,
           markPx: details.markPx || null,
-          launchDate: details.deployTime ? details.deployTime.split('T')[0] : null,
+          launchDate: details.deployTime?.split('T')[0] || null,
           auctionPrice: details.seededUsdc && parseFloat(details.seededUsdc) !== 0
             ? (parseFloat(details.seededUsdc) / parseFloat(details.circulatingSupply)).toString()
             : null,
@@ -83,31 +89,43 @@ async function updateTokenData(db) {
           launchMarketCap: startPx && details.circulatingSupply
             ? (parseFloat(startPx) * parseFloat(details.circulatingSupply)).toFixed(2)
             : null,
+          teamAllocation: existingToken?.teamAllocation || null,
+          airdrop1: airdrop1,
+          airdrop2: airdrop2,
+          devReputation: existingToken?.devReputation || false,
+          spreadLessThanThree: existingToken?.spreadLessThanThree || false,
+          thickObLiquidity: existingToken?.thickObLiquidity || false,
+          noSellPressure: existingToken?.noSellPressure || false,
+          twitter: existingToken?.twitter || "",
+          telegram: existingToken?.telegram || "",
+          discord: existingToken?.discord || "",
+          website: existingToken?.website || "",
+          comment: existingToken?.comment || "",
           lastUpdated: new Date().toISOString()
         };
-        
+
         if (!existingToken) {
-          console.log(`Nouveau token trouvé : ${token.name}`);
+          console.log(`New token found: ${token.name}`);
           await db.collection('allTokens').insertOne(tokenData);
           hasChanges = true;
         } else {
-          // Mise à jour minimale pour ne pas écraser les champs modifiés manuellement
-          await db.collection('allTokens').updateOne(
-            { name: token.name },
-            { $set: { markPx: details.markPx || existingToken.markPx, lastUpdated: new Date().toISOString() } }
+          const updateResult = await db.collection('allTokens').updateOne(
+            { tokenIndex: token.index },
+            { $set: tokenData }
           );
+          console.log(`Updated token: ${token.name}, Matched count: ${updateResult.matchedCount}`);
           hasChanges = true;
         }
       } catch (error) {
-        console.error(`Erreur pour le token ${token.name} :`, error.message);
+        console.error(`Error processing token ${token.name}:`, error.message);
       }
     }
-    
+
     if (hasChanges) {
-      console.log('Données mises à jour à :', new Date().toISOString());
+      console.log('Token data updated:', new Date().toISOString());
     }
   } catch (error) {
-    console.error('Erreur lors de la mise à jour des tokens :', error.message);
+    console.error('Error during token update:', error.message);
   }
 }
 
