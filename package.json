@@ -7,7 +7,8 @@
     "start": "node src/app.js",
     "cron": "node src/cron/updateTokens.js",
     "dev": "nodemon src/app.js",
-    "test": "jest"
+    "test": "jest",
+    "extract": "node src/scripts/extractTokens.js"
   },
   "dependencies": {
     "axios": "^1.7.9",
