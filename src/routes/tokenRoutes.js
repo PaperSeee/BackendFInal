@@ -35,4 +35,17 @@ router.put('/:tokenIndex', authMiddleware, async (req, res) => {
   }
 });
 
+// Add this route to your existing tokenRoutes.js file
+router.post('/refresh', async (req, res) => {
+  try {
+    const db = req.app.locals.db; // Assuming you have db connection in app.locals
+    // Call the same function that updates the tokens
+    await require('../controllers/tokenController').updateTokenData(db);
+    res.status(200).json({ success: true, message: 'Token data refreshed successfully' });
+  } catch (error) {
+    console.error('Error refreshing data:', error);
+    res.status(500).json({ success: false, message: 'Failed to refresh token data' });
+  }
+});
+
 module.exports = router;
