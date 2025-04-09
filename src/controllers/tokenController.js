@@ -37,8 +37,12 @@ const config = {
 };
 
 const getSpotMeta = () => makeRateLimitedRequest(async () => {
-  const response = await axios.post(config.hyperliquidApiUrl, { type: "spotMeta" });
-  if (!response.data?.tokens) throw new Error('Invalid response for spotMeta.');
+  // Utiliser directement l'URL qui fonctionne
+  const response = await axios.post('https://api.hyperliquid.xyz/info', { 
+    type: "spotMeta" 
+  });
+  
+  if (!response.data?.tokens) throw new Error('Invalid API response for spotMeta.');
   return response.data.tokens.map(token => ({
     name: token.name,
     tokenId: token.tokenId,
@@ -47,8 +51,14 @@ const getSpotMeta = () => makeRateLimitedRequest(async () => {
 }, 20);
 
 const getTokenDetails = (tokenId) => makeRateLimitedRequest(async () => {
-  const response = await axios.post(config.hyperliquidApiUrl, { type: "tokenDetails", tokenId });
+  // Utiliser directement l'URL qui fonctionne au lieu de config.hyperliquidApiUrl
+  const response = await axios.post('https://api.hyperliquid.xyz/info', { 
+    type: "tokenDetails", 
+    tokenId 
+  });
+  
   if (!response.data?.name) throw new Error(`Details not found for tokenId: ${tokenId}`);
+  console.log(`Retrieved price for ${response.data.name}: ${response.data.markPx}`);
   return response.data;
 }, 20);
 
